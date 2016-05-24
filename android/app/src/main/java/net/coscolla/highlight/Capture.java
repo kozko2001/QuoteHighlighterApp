@@ -20,6 +20,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
 
+import net.coscolla.highlight.net.UploadImage;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -31,6 +33,7 @@ public class Capture extends AppCompatActivity {
   private static final int REQUEST_PERMISSIONS = 2;
   private ImageView imagePreview;
   private String mCurrentPhotoPath;
+  private UploadImage uploader;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +43,7 @@ public class Capture extends AppCompatActivity {
     setSupportActionBar(toolbar);
 
     imagePreview = (ImageView) this.findViewById(R.id.image_preview); // TODO Databinding
+    uploader = new UploadImage();
 
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
     fab.setOnClickListener((e) -> this.takePicture());
@@ -69,6 +73,9 @@ public class Capture extends AppCompatActivity {
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
       setPic();
+
+      uploader.uploadImage(mCurrentPhotoPath);
+
     }
   }
 
