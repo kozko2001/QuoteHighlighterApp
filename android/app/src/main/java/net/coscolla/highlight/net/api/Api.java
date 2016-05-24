@@ -1,4 +1,4 @@
-package net.coscolla.highlight.net;
+package net.coscolla.highlight.net.api;
 
 import okhttp3.MultipartBody;
 import okhttp3.ResponseBody;
