@@ -37,6 +37,7 @@ import com.google.api.services.vision.v1.model.Image;
 
 import net.coscolla.highlight.net.api.UploadImage;
 import net.coscolla.highlight.net.vision.VisionApi;
+import net.coscolla.highlight.utils.BitmapUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -50,11 +51,11 @@ import rx.android.schedulers.AndroidSchedulers;
 
 import static rx.schedulers.Schedulers.io;
 
-public class Capture extends AppCompatActivity {
+public class CaptureActivity extends AppCompatActivity {
 
   static final int REQUEST_IMAGE_CAPTURE = 1;
   private static final int REQUEST_PERMISSIONS = 2;
-  private static final String LOGTAG = "Capture";
+  private static final String LOGTAG = "CaptureActivity";
   private ImageView imagePreview;
   private TextView imageText;
   private String mCurrentPhotoPath;
@@ -70,9 +71,10 @@ public class Capture extends AppCompatActivity {
     imagePreview = (ImageView) this.findViewById(R.id.image_preview); // TODO Databinding
     imageText = (TextView) findViewById(R.id.image_text);
 
-
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+
     fab.setOnClickListener((e) -> this.takePicture());
+
   }
 
   @Override
@@ -98,19 +100,13 @@ public class Capture extends AppCompatActivity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+      BitmapUtils.rotateCameraBitmap(mCurrentPhotoPath);
+
       setPic();
 
-      imageText.setText("loading");
-      Uri file = Uri.fromFile(new File(mCurrentPhotoPath));
-      new VisionApi().googleVisionOCR(file, getContentResolver())
-          .subscribeOn(io())
-          .observeOn(AndroidSchedulers.mainThread())
-          .subscribe((text) -> {
-            imageText.setText(text);
-          }, (e) -> {
-            imageText.setText(e.getMessage());
-          }, () -> {
-          });
+      Intent intent = new Intent(this, HighlightActivity.class);
+      intent.putExtra(HighlightActivity.EXTRA_IMAGE, mCurrentPhotoPath);
+      startActivity(intent);
     }
   }
 
@@ -132,26 +128,7 @@ public class Capture extends AppCompatActivity {
 
 
   private void setPic() {
-    // Get the dimensions of the View
-    int targetW = imagePreview.getWidth();
-    int targetH = imagePreview.getHeight();
-
-    // Get the dimensions of the bitmap
-    BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-    bmOptions.inJustDecodeBounds = true;
-    BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
-    int photoW = bmOptions.outWidth;
-    int photoH = bmOptions.outHeight;
-
-    // Determine how much to scale down the image
-    int scaleFactor = Math.min(photoW/targetW, photoH/targetH);
-
-    // Decode the image file into a Bitmap sized to fill the View
-    bmOptions.inJustDecodeBounds = false;
-    bmOptions.inSampleSize = scaleFactor;
-    bmOptions.inPurgeable = true;
-
-    Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
+    Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath);
     imagePreview.setImageBitmap(bitmap);
   }
 
