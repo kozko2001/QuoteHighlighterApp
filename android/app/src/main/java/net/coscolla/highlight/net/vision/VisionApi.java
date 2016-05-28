@@ -132,7 +132,7 @@ public class VisionApi {
     if (labels != null) {
       for (EntityAnnotation label : labels) {
         message += String.format("%s", label.getDescription());
-        message += "\n";
+        message += " \n ";
       }
     } else {
       message += "nothing";

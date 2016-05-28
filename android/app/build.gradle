@@ -44,4 +44,7 @@ dependencies {
 
     compile 'me.panavtec:drawableview:0.6.0'
 
+
+    compile 'com.rmtheis:tess-two:6.0.0'
+
 }

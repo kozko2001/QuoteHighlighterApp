@@ -23,6 +23,7 @@ import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import net.coscolla.highlight.net.tesseract.Tesseract;
 import net.coscolla.highlight.net.vision.VisionApi;
 
 import java.io.BufferedOutputStream;
@@ -134,11 +135,29 @@ public class HighlightActivity extends AppCompatActivity {
 
       capturedImage.setImageBitmap(result);
 
+      /*
+
+        new Tesseract().ocr(result)
+            .subscribeOn(io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                (text) -> {
+                  showData(text);
+                  Log.e(LOGTAG, text);
+                }, (e) -> {
+                  Log.e(LOGTAG, "ERROR: " + e.getMessage());
+                  showData("ERROR " + e.getMessage());
+                }, () -> {
+
+                });
+
+
+*/
       try {
-        File file = new File(getImageFile() + "-kzk.jpg");
-        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
-        result.compress(Bitmap.CompressFormat.JPEG, 100, os);
-        os.close();
+      File file = new File(getImageFile() + "-kzk.jpg");
+      OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+      result.compress(Bitmap.CompressFormat.JPEG, 100, os);
+      os.close();
 
         new VisionApi().googleVisionOCR(Uri.fromFile(file), getContentResolver())
             .subscribeOn(io())
@@ -155,7 +174,6 @@ public class HighlightActivity extends AppCompatActivity {
       } catch (Exception ignored) {
 
       }
-
     });
   }
 

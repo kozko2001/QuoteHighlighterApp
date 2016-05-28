@@ -73,6 +73,9 @@ public class CaptureActivity extends AppCompatActivity {
 
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
 
+    mCurrentPhotoPath = "/storage/emulated/0/Android/data/net.coscolla.highlight/files/JPEG_20160526_063232_1992924699.jpg";
+    //startHighlight();
+
     fab.setOnClickListener((e) -> this.takePicture());
 
   }
@@ -104,10 +107,14 @@ public class CaptureActivity extends AppCompatActivity {
 
       setPic();
 
-      Intent intent = new Intent(this, HighlightActivity.class);
-      intent.putExtra(HighlightActivity.EXTRA_IMAGE, mCurrentPhotoPath);
-      startActivity(intent);
+      startHighlight();
     }
+  }
+
+  private void startHighlight() {
+    Intent intent = new Intent(this, HighlightActivity.class);
+    intent.putExtra(HighlightActivity.EXTRA_IMAGE, mCurrentPhotoPath);
+    startActivity(intent);
   }
 
   private File createImageFile() throws IOException {
@@ -138,6 +145,14 @@ public class CaptureActivity extends AppCompatActivity {
 
       ActivityCompat.requestPermissions(this,
           new String[]{Manifest.permission.CAMERA},
+          REQUEST_PERMISSIONS);
+    }
+
+    permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
+    if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+
+      ActivityCompat.requestPermissions(this,
+          new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
           REQUEST_PERMISSIONS);
     }
   }
