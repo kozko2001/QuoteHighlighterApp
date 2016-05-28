@@ -1,0 +1,20 @@
+CREATE TABLE highlight (
+  _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  original TEXT NOT NULL,
+  highlighted TEXT NOT NULL,
+  text TEXT NOT NULL,
+  ts_created INTEGER NOT NULL,
+  ts_upldated INTEGER NOT NULL
+);
+
+
+select_all:
+SELECT *
+FROM highlight
+order by ts_upldated desc;
+
+select_filter:
+SELECT *
+from highlight
+where text like '%' + ? + '%'
+order by ts_upldated desc;
