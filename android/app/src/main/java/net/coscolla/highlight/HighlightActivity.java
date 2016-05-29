@@ -2,6 +2,7 @@ package net.coscolla.highlight;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -20,6 +21,8 @@ import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import net.coscolla.highlight.model.Highlight;
+import net.coscolla.highlight.model.HighlightRepository;
 import net.coscolla.highlight.recognition.Recognition;
 import net.coscolla.highlight.recognition.vision.VisionApi;
 
@@ -30,8 +33,11 @@ import java.io.OutputStream;
 
 import me.panavtec.drawableview.DrawableView;
 import me.panavtec.drawableview.DrawableViewConfig;
+import rx.Observable;
 import rx.android.schedulers.AndroidSchedulers;
+import timber.log.Timber;
 
+import static rx.Observable.fromCallable;
 import static rx.schedulers.Schedulers.io;
 
 public class HighlightActivity extends AppCompatActivity {
@@ -40,15 +46,16 @@ public class HighlightActivity extends AppCompatActivity {
   private static final String LOGTAG = "HighlightActivity";
   private ImageView capturedImage;
   private DrawableView paintView;
-
-  private float currentScale = 1.0f;
   private Bitmap capturedBitmap;
+  private HighlightRepository repository;
 
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_highlight);
+
+    repository = new HighlightRepository(HighlightApplication.getDb());
 
     capturedImage = (ImageView) findViewById(R.id.captured_image);
     paintView = (DrawableView) findViewById(R.id.paintView);
@@ -96,8 +103,6 @@ public class HighlightActivity extends AppCompatActivity {
         paintView.setConfig(config);
         paintView.setAlpha(0.5f);
 
-        currentScale = sx;
-
         return false;
       }
     });
@@ -120,10 +125,8 @@ public class HighlightActivity extends AppCompatActivity {
       Canvas tempCanvas = new Canvas(result);
       Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-
       ColorMatrix ma = new ColorMatrix();
       ma.setSaturation(0);
-
 
       paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
       tempCanvas.drawBitmap(capturedBitmap, 0, 0, null);
@@ -132,47 +135,56 @@ public class HighlightActivity extends AppCompatActivity {
 
       capturedImage.setImageBitmap(result);
 
+      File file = null;
       try {
-        File file = new File(getImageFile() + "-kzk.jpg");
+        file = new File(getImageFile() + "-kzk.jpg");
         OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
         result.compress(Bitmap.CompressFormat.JPEG, 100, os);
         os.close();
+      }catch (Exception ignored) {
+        file = null;
+      }
 
+      if(file != null) {
         Recognition recognition = new VisionApi();
+        String highlightedImageFilePath = file.getAbsolutePath();
         recognition.recognition(file.getAbsolutePath())
+            .flatMap((text) -> insertIntoDatabase(text, highlightedImageFilePath))
             .subscribeOn(io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
-                (text) -> {
-                  showData(text);
-                  Log.e(LOGTAG, text);
+                (highlight) -> {
+                  Timber.d("Highlight model stored correctly :)" + highlight);
+                  openListSuccess(highlight);
                 }, (e) -> {
-                  Log.e(LOGTAG, "ERROR: " + e.getMessage());
+                  Timber.e("Highlight model could not be stored :(" + e);
+                  openListError("Sorry something went wrong: " + e.getLocalizedMessage());
                 }, () -> {
 
                 });
-
-      }catch (Exception e) {
       }
     });
   }
 
-  private void showData(String text) {
-    new AlertDialog.Builder(this)
-        .setTitle("OCR")
-        .setMessage(text)
-        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-          public void onClick(DialogInterface dialog, int which) {
-            // continue with delete
-          }
-        })
-        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-          public void onClick(DialogInterface dialog, int which) {
-            // do nothing
-          }
-        })
-        .setIcon(android.R.drawable.ic_dialog_alert)
-        .show();
+  private void openListSuccess(Highlight highlight) {
+    Intent intent = new Intent(this, CaptureActivity.class);
+    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    intent.putExtra(CaptureActivity.NEW_HIGHLIGHT_ADDED, highlight);
+    startActivity(intent);
+  }
+
+  private void openListError(String error) {
+    Intent intent = new Intent(this, CaptureActivity.class);
+    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    intent.putExtra(CaptureActivity.NEW_HIGHLIGHT_ERROR, error);
+    startActivity(intent);
+  }
+
+
+  private Observable<Highlight> insertIntoDatabase(String text, String highlight) {
+
+    long ts = System.currentTimeMillis();
+    return fromCallable(() -> repository.insert(getImageFile(), highlight, text, ts, ts));
   }
 
   private String getImageFile() {

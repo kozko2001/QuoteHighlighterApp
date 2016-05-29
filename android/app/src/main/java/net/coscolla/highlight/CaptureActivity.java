@@ -2,22 +2,22 @@ package net.coscolla.highlight;
 
 import android.Manifest;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.gun0912.tedpermission.PermissionListener;
 import com.gun0912.tedpermission.TedPermission;
 
-import net.coscolla.highlight.recognition.api.UploadImage;
+import net.coscolla.highlight.model.Highlight;
 import net.coscolla.highlight.utils.BitmapUtils;
+import net.coscolla.highlight.view.list.HighlightListFragment;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,12 +28,13 @@ import java.util.Date;
 public class CaptureActivity extends AppCompatActivity {
 
   static final int REQUEST_IMAGE_CAPTURE = 1;
-  private static final int REQUEST_PERMISSIONS = 2;
-  private static final String LOGTAG = "CaptureActivity";
-  private ImageView imagePreview;
-  private TextView imageText;
+  private static final String SAVE_STATE_CURRENT_FILE = "SAVE_STATE_CURRENT_FILE";
+  public static final String NEW_HIGHLIGHT_ADDED = "INTENT_NEW_HIGHLIGHT_ADDED";
+  public static final String NEW_HIGHLIGHT_ERROR = "INTENT_NEW_HIGHLIGHT_ERROR";
+
   private String mCurrentPhotoPath;
-  private UploadImage uploader;
+  private HighlightListFragment listFragment;
+  private CoordinatorLayout coordinatorLayout;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -42,23 +43,53 @@ public class CaptureActivity extends AppCompatActivity {
     Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
     setSupportActionBar(toolbar);
 
-    imagePreview = (ImageView) this.findViewById(R.id.image_preview); // TODO Databinding
-    imageText = (TextView) findViewById(R.id.image_text);
-
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+    coordinatorLayout = (CoordinatorLayout) findViewById(R.id.coordinator);
 
-    mCurrentPhotoPath = "/storage/emulated/0/Android/data/net.coscolla.highlight/files/JPEG_20160526_063232_1992924699.jpg";
+    //mCurrentPhotoPath = "/storage/emulated/0/Android/data/net.coscolla.highlight/files/JPEG_20160526_063232_1992924699.jpg";
     //startHighlight();
 
     if (fab != null) {
       fab.setOnClickListener((e) -> this.askPermissionsToTakePicture());
     }
 
+    addHighlightList();
   }
 
   @Override
-  protected void onResume() {
-    super.onResume();
+  protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+    Highlight newHighlightAdded = intent.getParcelableExtra(NEW_HIGHLIGHT_ADDED);
+    String newHighlightError = intent.getStringExtra(NEW_HIGHLIGHT_ERROR);
+
+    if(newHighlightAdded != null && listFragment != null) {
+      listFragment.newHighlightAdded(newHighlightAdded);
+    }
+
+    if(newHighlightError != null) {
+      Snackbar snackbar = Snackbar.make(coordinatorLayout, newHighlightError, Snackbar.LENGTH_LONG);
+      snackbar.show();
+    }
+  }
+
+  @Override
+  protected void onSaveInstanceState(Bundle outState) {
+    super.onSaveInstanceState(outState);
+    outState.putString(SAVE_STATE_CURRENT_FILE, mCurrentPhotoPath);
+  }
+
+  @Override
+  protected void onRestoreInstanceState(Bundle savedInstanceState) {
+    super.onRestoreInstanceState(savedInstanceState);
+    mCurrentPhotoPath = savedInstanceState.getString(SAVE_STATE_CURRENT_FILE);
+  }
+
+  private void addHighlightList() {
+    listFragment = HighlightListFragment.create();
+    FragmentManager fragmentManager = getSupportFragmentManager();
+    fragmentManager.beginTransaction()
+        .add(R.id.content, listFragment)
+        .commit();
   }
 
   private void askPermissionsToTakePicture() {
@@ -99,8 +130,6 @@ public class CaptureActivity extends AppCompatActivity {
     if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
       BitmapUtils.rotateCameraBitmap(mCurrentPhotoPath);
 
-      setPic();
-
       startHighlight();
     }
   }
@@ -125,12 +154,6 @@ public class CaptureActivity extends AppCompatActivity {
     // Save a file: path for use with ACTION_VIEW intents
     mCurrentPhotoPath = image.getAbsolutePath();
     return image;
-  }
-
-
-  private void setPic() {
-    Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath);
-    imagePreview.setImageBitmap(bitmap);
   }
 
 }

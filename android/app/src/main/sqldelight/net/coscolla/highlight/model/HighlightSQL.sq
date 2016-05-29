@@ -16,5 +16,11 @@ order by ts_upldated desc;
 select_filter:
 SELECT *
 from highlight
-where text like '%' + ? + '%'
+where text like ?
 order by ts_upldated desc;
+
+
+select_by_id:
+SELECT *
+from highlight
+where _id = ?;

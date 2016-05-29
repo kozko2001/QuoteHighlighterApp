@@ -7,12 +7,16 @@ import com.facebook.stetho.Stetho;
 
 import net.coscolla.highlight.model.DB;
 
+import timber.log.Timber;
+
 public class HighlightApplication extends Application {
   private static SQLiteDatabase db;
 
   @Override
   public void onCreate() {
     super.onCreate();
+
+    Timber.plant(new Timber.DebugTree());
 
     initDB();
 

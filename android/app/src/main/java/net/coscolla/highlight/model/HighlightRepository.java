@@ -2,10 +2,14 @@ package net.coscolla.highlight.model;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import rx.Observable;
+
+import static rx.Observable.from;
+import static rx.Observable.fromCallable;
 
 public class HighlightRepository {
   private final SQLiteDatabase db;
@@ -14,9 +18,8 @@ public class HighlightRepository {
     this.db = db;
   }
 
-  public void insert(SQLiteDatabase db, long _id, String original, String highlighted, String text, long created, long updated) {
-    db.insert(Highlight.TABLE_NAME, null, new Highlight.Marshal()
-        ._id(_id)
+  public Highlight insert(String original, String highlighted, String text, long created, long updated) {
+    long id = db.insertOrThrow(Highlight.TABLE_NAME, null, new Highlight.Marshal()
         .original(original)
         .highlighted(highlighted)
         .text(text)
@@ -24,11 +27,23 @@ public class HighlightRepository {
         .ts_upldated(updated)
         .asContentValues());
 
+    return findById(id);
   }
 
-  public List<Highlight> filter(SQLiteDatabase db, String filter) {
+  private Highlight findById(long id) {
+    Cursor cursor = db.rawQuery(Highlight.SELECT_BY_ID, new String[]{"" + id});
+    Highlight highlight = null;
+    while (cursor.moveToNext()) {
+      highlight = Highlight.MAPPER.map(cursor);
+    }
+    cursor.close();
+    return highlight;
+  }
+
+
+  private List<Highlight> filter(SQLiteDatabase db, String filter) {
     List<Highlight> result = new ArrayList<>();
-    Cursor cursor = db.rawQuery(Highlight.SELECT_FILTER, new String[]{filter});
+    Cursor cursor = db.rawQuery(Highlight.SELECT_FILTER, new String[] {"%" + filter + "%"});
     while (cursor.moveToNext()) {
       result.add(Highlight.MAPPER.map(cursor));
     }
@@ -36,4 +51,8 @@ public class HighlightRepository {
     return result;
   }
 
+  public Observable<Highlight> filter(String filter) {
+    return fromCallable(() -> filter(db, filter))
+        .flatMap(list -> from(list));
+  }
 }
