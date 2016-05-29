@@ -5,13 +5,10 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.ColorFilter;
 import android.graphics.ColorMatrix;
-import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
 import android.net.Uri;
 import android.os.Bundle;
@@ -23,8 +20,8 @@ import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
-import net.coscolla.highlight.net.tesseract.Tesseract;
-import net.coscolla.highlight.net.vision.VisionApi;
+import net.coscolla.highlight.recognition.Recognition;
+import net.coscolla.highlight.recognition.vision.VisionApi;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -135,9 +132,14 @@ public class HighlightActivity extends AppCompatActivity {
 
       capturedImage.setImageBitmap(result);
 
-      /*
+      try {
+        File file = new File(getImageFile() + "-kzk.jpg");
+        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+        result.compress(Bitmap.CompressFormat.JPEG, 100, os);
+        os.close();
 
-        new Tesseract().ocr(result)
+        Recognition recognition = new VisionApi();
+        recognition.recognition(file.getAbsolutePath())
             .subscribeOn(io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
@@ -146,33 +148,11 @@ public class HighlightActivity extends AppCompatActivity {
                   Log.e(LOGTAG, text);
                 }, (e) -> {
                   Log.e(LOGTAG, "ERROR: " + e.getMessage());
-                  showData("ERROR " + e.getMessage());
                 }, () -> {
 
                 });
 
-
-*/
-      try {
-      File file = new File(getImageFile() + "-kzk.jpg");
-      OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
-      result.compress(Bitmap.CompressFormat.JPEG, 100, os);
-      os.close();
-
-        new VisionApi().googleVisionOCR(Uri.fromFile(file), getContentResolver())
-            .subscribeOn(io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-            (text) -> {
-              showData(text);
-              Log.e(LOGTAG, text);
-            }, (e) -> {
-              Log.e(LOGTAG, "ERROR: " + e.getMessage());
-            }, () -> {
-
-            });
-      } catch (Exception ignored) {
-
+      }catch (Exception e) {
       }
     });
   }

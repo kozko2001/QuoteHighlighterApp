@@ -1,8 +1,10 @@
-package net.coscolla.highlight.net.api;
+package net.coscolla.highlight.recognition.api;
 
 import android.util.Log;
 
 import com.facebook.stetho.okhttp3.StethoInterceptor;
+
+import net.coscolla.highlight.recognition.Recognition;
 
 import java.io.File;
 
@@ -10,13 +12,13 @@ import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
+import rx.Observable;
+import rx.exceptions.Exceptions;
 
-public class UploadImage {
+public class UploadImage implements Recognition {
 
   private static final String LOGTAG = "UploadImage";
   private final Retrofit retrofit;
@@ -30,39 +32,37 @@ public class UploadImage {
     retrofit = new Retrofit.Builder()
         .baseUrl("http://192.168.11.33:5000/")
         .addConverterFactory(GsonConverterFactory.create())
+        .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
         .client(client)
         .build();
 
     service = retrofit.create(Api.class);
   }
 
-  public void uploadImage(String filePath) {
 
+  @Override
+  public Observable<String> recognition(String filePath) {
     File file = new File(filePath);
     RequestBody requestFile = RequestBody.create(MediaType.parse("multipart/form-data"), file);
     MultipartBody.Part body = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
 
-    Call<UploadImageResult> call = service.uploadImage(body);
-    call.enqueue(new Callback<UploadImageResult>() {
-      @Override
-      public void onResponse(Call<UploadImageResult> call,
-                             Response<UploadImageResult> response) {
-        if(response.isSuccessful()) {
-          if(response.body().result != null) {
-            Log.e(LOGTAG, "result: " + response.body().result);
+    return service.uploadImage(body)
+        .map(uploadImageResult ->  {
+          if(uploadImageResult.result != null) {
+            return uploadImageResult.result;
+          } else {
+            String error;
+            if(uploadImageResult.error != null) {
+              error = uploadImageResult.error;
+            } else {
+              error = "unrecoverable error";
+            }
+
+            Exceptions.propagate(new Exception("error :" + error));
+            return "";
           }
-          if(response.body().error != null) {
-            Log.e(LOGTAG, "error: " + response.body().error);
-          }
-        }
-      }
-
-      @Override
-      public void onFailure(Call<UploadImageResult> call, Throwable t) {
-
-        Log.e("Upload error:", t.getMessage());
-      }
-    });
-
+        }).doOnError((e) -> {
+          Log.e("Upload error:", e.getMessage());
+        });
   }
 }

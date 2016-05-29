@@ -1,4 +1,4 @@
-package net.coscolla.highlight.net.api;
+package net.coscolla.highlight.recognition.api;
 
 public class UploadImageResult {
   public String result;

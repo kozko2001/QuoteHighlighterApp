@@ -1,4 +1,4 @@
-package net.coscolla.highlight.net.vision;
+package net.coscolla.highlight.recognition.vision;
 
 import android.content.ContentResolver;
 import android.graphics.Bitmap;
@@ -7,7 +7,6 @@ import android.provider.MediaStore;
 import android.util.Log;
 
 import com.google.api.client.extensions.android.http.AndroidHttp;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
@@ -20,6 +19,9 @@ import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
 
+import net.coscolla.highlight.recognition.Recognition;
+import net.coscolla.highlight.utils.BitmapUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,32 +30,28 @@ import java.util.List;
 import rx.Observable;
 
 import static rx.Observable.fromCallable;
+import static rx.Observable.merge;
 
 /**
  * Copied from https://github.com/GoogleCloudPlatform/cloud-vision/blob/master/android/CloudVision/app/src/main/java/com/google/sample/cloudvision/MainActivity.java
  */
-public class VisionApi {
+public class VisionApi implements Recognition {
 
   private static final java.lang.String CLOUD_VISION_API_KEY = "API_KEY";
   private static final String LOGTAG = "VisionApi";
 
-  public Observable<String> googleVisionOCR(Uri url, ContentResolver contentResolver) {
-    return fromCallable(() -> uploadImage(url, contentResolver));
+
+  @Override
+  public Observable<String> recognition(String filePath) {
+
+    return fromCallable(() -> {
+      Bitmap bitmap_orig = BitmapUtils.loadFromFilePath(filePath);
+      Bitmap bitmap = BitmapUtils.scaleBitmapDown(bitmap_orig, 1200);
+      bitmap_orig.recycle();
+
+      return callCloudVision(bitmap);
+    });
   }
-
-  public String uploadImage(Uri uri, ContentResolver contentResolver) throws Exception {
-    if (uri != null) {
-        // scale the image to save on bandwidth
-        Bitmap bitmap =
-            scaleBitmapDown(MediaStore.Images.Media.getBitmap(contentResolver, uri),
-                1200);
-
-        return callCloudVision(bitmap);
-    } else {
-      throw new Exception("Image picker gave us a null image.");
-    }
-  }
-
 
   private String callCloudVision(Bitmap bitmap) throws IOException {
 
@@ -104,40 +102,16 @@ public class VisionApi {
     return convertResponseToString(response);
   }
 
-  public Bitmap scaleBitmapDown(Bitmap bitmap, int maxDimension) {
-
-    int originalWidth = bitmap.getWidth();
-    int originalHeight = bitmap.getHeight();
-    int resizedWidth = maxDimension;
-    int resizedHeight = maxDimension;
-
-    if (originalHeight > originalWidth) {
-      resizedHeight = maxDimension;
-      resizedWidth = (int) (resizedHeight * (float) originalWidth / (float) originalHeight);
-    } else if (originalWidth > originalHeight) {
-      resizedWidth = maxDimension;
-      resizedHeight = (int) (resizedWidth * (float) originalHeight / (float) originalWidth);
-    } else if (originalHeight == originalWidth) {
-      resizedHeight = maxDimension;
-      resizedWidth = maxDimension;
-    }
-    return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false);
-
-  }
 
   private String convertResponseToString(BatchAnnotateImagesResponse response) {
-    String message = "I found these things:\n\n";
 
     List<EntityAnnotation> labels = response.getResponses().get(0).getTextAnnotations();
-    if (labels != null) {
-      for (EntityAnnotation label : labels) {
-        message += String.format("%s", label.getDescription());
-        message += " \n ";
-      }
-    } else {
-      message += "nothing";
+    if (labels != null && labels.size() > 0) {
+
+      EntityAnnotation label = labels.get(0);
+      return label.getDescription();
     }
 
-    return message;
+    return "nothing found";
   }
 }

@@ -1,22 +1,24 @@
-package net.coscolla.highlight.net.tesseract;
+package net.coscolla.highlight.recognition.tesseract;
 
 import android.graphics.Bitmap;
-import android.os.Environment;
 
 import com.googlecode.leptonica.android.Binarize;
 import com.googlecode.leptonica.android.Pix;
 import com.googlecode.leptonica.android.ReadFile;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
-import rx.Observable;
-import rx.functions.Func0;
+import net.coscolla.highlight.recognition.Recognition;
+import net.coscolla.highlight.utils.BitmapUtils;
 
-import static rx.Observable.defer;
+import rx.Observable;
+
 import static rx.Observable.fromCallable;
 
-public class Tesseract {
+public class Tesseract implements Recognition {
 
-  public Observable<String> ocr(Bitmap bitmap) {
+  @Override
+  public Observable<String> recognition(String filePath) {
+    Bitmap bitmap = BitmapUtils.loadFromFilePath(filePath);
     return fromCallable(() -> tesseract(bitmap));
   }
 
