@@ -6,10 +6,14 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -31,6 +35,14 @@ public class HighlightListFragment extends Fragment {
   private RecyclerView list;
   private HighlightListAdapter adapter;
   private HighlightRepository repository;
+  private String currentSearch;
+
+  @Override
+  public void onCreate(@Nullable Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setHasOptionsMenu(true);
+
+  }
 
   @Nullable
   @Override
@@ -39,6 +51,7 @@ public class HighlightListFragment extends Fragment {
     list = (RecyclerView) view.findViewById(R.id.list);
     adapter = new HighlightListAdapter(getContext());
     repository = new HighlightRepository(HighlightApplication.getDb());
+    currentSearch = "";
 
     return view;
   }
@@ -65,6 +78,27 @@ public class HighlightListFragment extends Fragment {
       repository.updateText(input, model._id());
       getData();
     }
+  }
+
+  @Override
+  public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    super.onCreateOptionsMenu(menu, inflater);
+    inflater.inflate(R.menu.menu_capture, menu);
+    // Retrieve the SearchView and plug it into SearchManager
+    final SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.action_search));
+    searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+      @Override
+      public boolean onQueryTextSubmit(String query) {
+        filterList(query);
+        return true;
+      }
+
+      @Override
+      public boolean onQueryTextChange(String newText) {
+        filterList(newText);
+        return true;
+      }
+    });
   }
 
   private void setupList() {
@@ -102,7 +136,7 @@ public class HighlightListFragment extends Fragment {
   }
 
   private void getData() {
-    repository.filter("")
+    repository.filter(currentSearch)
         .toList()
         .subscribeOn(io())
         .observeOn(AndroidSchedulers.mainThread())
@@ -122,4 +156,12 @@ public class HighlightListFragment extends Fragment {
   public void newHighlightAdded(Highlight newHighlightAdded) {
     adapter.add(0, newHighlightAdded);
   }
+
+  private void filterList(String query) {
+    Timber.d("Filtering list with " + query);
+    currentSearch = query;
+    getData();
+  }
+
+
 }
