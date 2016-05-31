@@ -13,6 +13,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
@@ -73,104 +74,102 @@ public class HighlightActivity extends AppCompatActivity {
       public boolean onPreDraw() {
         capturedImage.getViewTreeObserver().removeOnPreDrawListener(this);
 
-        DrawableViewConfig config = new DrawableViewConfig();
-        config.setStrokeColor(getResources().getColor(R.color.highlighter));
-        config.setShowCanvasBounds(true); // If the view is bigger than canvas, with this the user will see the bounds (Recommended)
-
-        config.setMinZoom(33.333f);
-        config.setMaxZoom(33.333f);
-        Matrix matrix = capturedImage.getImageMatrix();
-        float[] v = new float[9];
-        matrix.getValues(v);
-
-        float sx = v[0];
-        float sy = v[4];
-        float offset_x = v[2];
-        float offset_y = v[5];
-
-        int height = (int) (capturedBitmap.getHeight() * sy);
-        int width = (int) (capturedBitmap.getWidth() * sx);
-
-        config.setCanvasHeight(height);
-        config.setCanvasWidth(width);
-
-        float strokeSize = Math.min(capturedImage.getWidth(), capturedImage.getHeight()) / 20.0f;
-        strokeSize = (int) (strokeSize / sx);
-
-        config.setStrokeWidth(strokeSize);
-
-        paintView.setLayoutParams(new FrameLayout.LayoutParams(width, height));
-        paintView.setTranslationX(offset_x);
-        paintView.setTranslationY(offset_y);
-
-        paintView.onScaleChange(sx);
-        paintView.setConfig(config);
-        paintView.setAlpha(0.5f);
+        initializePaintView();
 
         return false;
       }
     });
 
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-    assert fab != null;
-    fab.setOnClickListener(view -> {
-      paintView.setVisibility(View.GONE);
-      int originalWidth = capturedBitmap.getWidth();
-      int originalHeight = capturedBitmap.getHeight();
-      Bitmap highlightBitmap = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
-      paintView.obtainBitmap(highlightBitmap);
+    if (fab != null) {
+      fab.setOnClickListener(view -> {
+        paintView.setVisibility(View.GONE);
+        int originalWidth = capturedBitmap.getWidth();
+        int originalHeight = capturedBitmap.getHeight();
+        Bitmap highlightBitmap = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
+        paintView.obtainBitmap(highlightBitmap);
 
-      int w = highlightBitmap.getWidth();
-      int h = highlightBitmap.getHeight();
+        Bitmap maskedBitmap = createMaskedBitmap(originalWidth, originalHeight, highlightBitmap);
+        Bitmap combinedBitmap = createCombinedBitmap(capturedBitmap, highlightBitmap);
 
-      Log.e(LOGTAG, "height: " + h);
+        File maskedImageFile = writeBitmapToFile(maskedBitmap, "-masked");
+        File combinedFile = writeBitmapToFile(combinedBitmap, "-combined");
 
-      Bitmap result = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
-      Canvas tempCanvas = new Canvas(result);
-      Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        if (maskedBitmap != null) {
+          maskedBitmap.recycle();
+        }
 
-      ColorMatrix ma = new ColorMatrix();
-      ma.setSaturation(0);
+        if(combinedBitmap != null) {
+          combinedBitmap.recycle();
+        }
 
-      paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
-      tempCanvas.drawBitmap(capturedBitmap, 0, 0, null);
-      tempCanvas.drawBitmap(highlightBitmap, 0, 0, paint);
-      paint.setXfermode(null);
+        startRecognition(maskedImageFile, combinedFile);
+      });
+    }
+  }
 
-      capturedImage.setImageBitmap(result);
+  /**
+   * Initializes the paint view, important since the paint view must have the same size
+   * as the imageview at the background, is important that the imageview is already measured
+   */
+  private void initializePaintView() {
+    DrawableViewConfig config = new DrawableViewConfig();
+    config.setStrokeColor(getResources().getColor(R.color.highlighter));
+    config.setShowCanvasBounds(true); // If the view is bigger than canvas, with this the user will see the bounds (Recommended)
 
-      File file = null;
-      try {
-        file = new File(getImageFile() + "-kzk.jpg");
-        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
-        result.compress(Bitmap.CompressFormat.JPEG, 100, os);
-        os.close();
-      }catch (Exception ignored) {
-        file = null;
-      }
+    config.setMinZoom(33.333f);
+    config.setMaxZoom(33.333f);
+    Matrix matrix = capturedImage.getImageMatrix();
+    float[] v = new float[9];
+    matrix.getValues(v);
 
-      if(file != null) {
-        startProgress();
+    float sx = v[0];
+    float sy = v[4];
+    float offset_x = v[2];
+    float offset_y = v[5];
 
-        Recognition recognition = new VisionApi();
-        String highlightedImageFilePath = file.getAbsolutePath();
-        recognition.recognition(file.getAbsolutePath())
-            .flatMap((text) -> insertIntoDatabase(text, highlightedImageFilePath))
-            .subscribeOn(io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                (highlight) -> {
-                  Timber.d("Highlight model stored correctly :)" + highlight);
-                  stopProgress();
-                  openListSuccess(highlight);
-                }, (e) -> {
-                  Timber.e("Highlight model could not be stored :(" + e);
-                  stopProgress();
-                  openListError("Sorry something went wrong: " + e.getLocalizedMessage());
-                }, () -> {
-                });
-      }
-    });
+    int height = (int) (capturedBitmap.getHeight() * sy);
+    int width = (int) (capturedBitmap.getWidth() * sx);
+
+    config.setCanvasHeight(height);
+    config.setCanvasWidth(width);
+
+    float strokeSize = Math.min(capturedImage.getWidth(), capturedImage.getHeight()) / 20.0f;
+    strokeSize = (int) (strokeSize / sx);
+
+    config.setStrokeWidth(strokeSize);
+
+    paintView.setLayoutParams(new FrameLayout.LayoutParams(width, height));
+    paintView.setTranslationX(offset_x);
+    paintView.setTranslationY(offset_y);
+
+    paintView.onScaleChange(sx);
+    paintView.setConfig(config);
+    paintView.setAlpha(0.5f);
+  }
+
+  private void startRecognition(File maskImage, File combinedImage) {
+    startProgress();
+
+    Recognition recognition = new VisionApi();
+    String highlightedImageFilePath = combinedImage.getAbsolutePath();
+    recognition.recognition(maskImage.getAbsolutePath())
+        .flatMap((text) -> insertIntoDatabase(text, highlightedImageFilePath))
+        .subscribeOn(io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(
+            (highlight) -> {
+              Timber.d("Highlight model stored correctly :)" + highlight);
+              stopProgress();
+              openListSuccess(highlight);
+            }, (e) -> {
+              Timber.e("Highlight model could not be stored :(" + e);
+              stopProgress();
+              openListError("Sorry something went wrong: " + e.getLocalizedMessage());
+            }, () -> {
+              maskImage.delete();
+              combinedImage.delete();
+            });
   }
 
   private void startProgress() {
@@ -199,9 +198,69 @@ public class HighlightActivity extends AppCompatActivity {
     startActivity(intent);
   }
 
+  /**
+   * Creates a bitmap that is the original bitmap but masked with the selection all that is not selected
+   * is white
+   *
+   * @param originalWidth
+   * @param originalHeight
+   * @param highlightBitmap
+   * @return
+   */
+  @Nullable
+  private Bitmap createMaskedBitmap(int originalWidth, int originalHeight, Bitmap highlightBitmap) {
+    int h = highlightBitmap.getHeight();
+
+    Log.e(LOGTAG, "height: " + h);
+
+    Bitmap result = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
+    Canvas tempCanvas = new Canvas(result);
+    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    ColorMatrix ma = new ColorMatrix();
+    ma.setSaturation(0);
+
+    paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
+    tempCanvas.drawBitmap(capturedBitmap, 0, 0, null);
+    tempCanvas.drawBitmap(highlightBitmap, 0, 0, paint);
+    paint.setXfermode(null);
+
+    return  result;
+  }
+
+  @Nullable
+  private Bitmap createCombinedBitmap(Bitmap capturedBitmap, Bitmap highlightBitmap) {
+    int h = highlightBitmap.getHeight();
+
+    Log.e(LOGTAG, "height: " + h);
+
+    Bitmap result = Bitmap.createBitmap(capturedBitmap.getWidth(), capturedBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+    Canvas tempCanvas = new Canvas(result);
+    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    tempCanvas.drawBitmap(capturedBitmap, 0, 0, null);
+    paint.setAlpha(127);
+    tempCanvas.drawBitmap(highlightBitmap, 0, 0, paint);
+
+    return  result;
+  }
+
+  @Nullable
+  private File writeBitmapToFile(Bitmap result, String name) {
+    File file = null;
+    try {
+      file = new File(getImageFile() + "name" + ".jpg");
+      OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+      result.compress(Bitmap.CompressFormat.JPEG, 100, os);
+      os.close();
+    }catch (Exception ignored) {
+      file = null;
+    }
+    return file;
+  }
+
 
   private Observable<Highlight> insertIntoDatabase(String text, String highlight) {
-
     long ts = System.currentTimeMillis();
     return fromCallable(() -> repository.insert(getImageFile(), highlight, text, ts, ts));
   }
