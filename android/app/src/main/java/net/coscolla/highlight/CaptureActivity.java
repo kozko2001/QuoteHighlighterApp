@@ -53,7 +53,9 @@ public class CaptureActivity extends AppCompatActivity {
       fab.setOnClickListener((e) -> this.askPermissionsToTakePicture());
     }
 
-    addHighlightList();
+    if(savedInstanceState == null) {
+      addHighlightList();
+    }
   }
 
   @Override

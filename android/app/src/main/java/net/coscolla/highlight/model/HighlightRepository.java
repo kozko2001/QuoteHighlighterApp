@@ -51,6 +51,10 @@ public class HighlightRepository {
     return result;
   }
 
+  public void updateText(String text, long id) {
+    db.execSQL(Highlight.UPDATE_TEXT, new String[]{text, "" + id});
+  }
+
   public Observable<Highlight> filter(String filter) {
     return fromCallable(() -> filter(db, filter))
         .flatMap(list -> from(list));

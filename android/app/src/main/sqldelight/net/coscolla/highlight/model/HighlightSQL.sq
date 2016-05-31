@@ -24,3 +24,7 @@ select_by_id:
 SELECT *
 from highlight
 where _id = ?;
+
+update_text:
+UPDATE highlight set text = ? where _id = ?;
+

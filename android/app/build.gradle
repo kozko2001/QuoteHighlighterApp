@@ -13,6 +13,7 @@ android {
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
+        vectorDrawables.useSupportLibrary = true
     }
     buildTypes {
         release {
@@ -59,5 +60,6 @@ dependencies {
     compile 'com.github.CymChad:BaseRecyclerViewAdapterHelper:v1.7.2'
 
     apt 'frankiesardo:auto-parcel:1.0.1'
+    compile 'com.afollestad.material-dialogs:core:0.8.5.9'
 
 }

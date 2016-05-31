@@ -14,6 +14,7 @@ import android.graphics.PorterDuffXfermode;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -21,10 +22,13 @@ import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import com.afollestad.materialdialogs.MaterialDialog;
+
 import net.coscolla.highlight.model.Highlight;
 import net.coscolla.highlight.model.HighlightRepository;
 import net.coscolla.highlight.recognition.Recognition;
 import net.coscolla.highlight.recognition.vision.VisionApi;
+import net.coscolla.highlight.view.dialogs.RecognizingProgressDialog;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -146,6 +150,8 @@ public class HighlightActivity extends AppCompatActivity {
       }
 
       if(file != null) {
+        startProgress();
+
         Recognition recognition = new VisionApi();
         String highlightedImageFilePath = file.getAbsolutePath();
         recognition.recognition(file.getAbsolutePath())
@@ -155,15 +161,28 @@ public class HighlightActivity extends AppCompatActivity {
             .subscribe(
                 (highlight) -> {
                   Timber.d("Highlight model stored correctly :)" + highlight);
+                  stopProgress();
                   openListSuccess(highlight);
                 }, (e) -> {
                   Timber.e("Highlight model could not be stored :(" + e);
+                  stopProgress();
                   openListError("Sorry something went wrong: " + e.getLocalizedMessage());
                 }, () -> {
-
                 });
       }
     });
+  }
+
+  private void startProgress() {
+    RecognizingProgressDialog dialog = new RecognizingProgressDialog();
+    dialog.show(getSupportFragmentManager(), "PROGRESS-DIALOG");
+  }
+
+  private void stopProgress() {
+    DialogFragment dialog = (DialogFragment) getSupportFragmentManager().findFragmentByTag("PROGRESS-DIALOG");
+    if(dialog != null) {
+      dialog.dismiss();
+    }
   }
 
   private void openListSuccess(Highlight highlight) {
