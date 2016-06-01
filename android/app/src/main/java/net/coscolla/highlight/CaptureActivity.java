@@ -114,6 +114,7 @@ public class CaptureActivity extends AppCompatActivity {
   }
 
   private void takePicture() {
+    HighlightApplication.getAnalytics().logEvent("START_CAPTURE");
     Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
     if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
       File outputFile;
@@ -130,6 +131,7 @@ public class CaptureActivity extends AppCompatActivity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+      HighlightApplication.getAnalytics().logEvent("CAPUTE_DONE");
       BitmapUtils.rotateCameraBitmap(mCurrentPhotoPath);
 
       startHighlight();

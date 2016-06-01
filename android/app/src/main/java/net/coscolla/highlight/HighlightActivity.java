@@ -83,6 +83,8 @@ public class HighlightActivity extends AppCompatActivity {
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
     if (fab != null) {
       fab.setOnClickListener(view -> {
+        HighlightApplication.getAnalytics().logEvent("HIGHLIGHT");
+
         paintView.setVisibility(View.GONE);
         int originalWidth = capturedBitmap.getWidth();
         int originalHeight = capturedBitmap.getHeight();
@@ -160,9 +162,11 @@ public class HighlightActivity extends AppCompatActivity {
         .subscribe(
             (highlight) -> {
               Timber.d("Highlight model stored correctly :)" + highlight);
+              HighlightApplication.getAnalytics().logEvent("OCR_PROCESS_OK");
               stopProgress();
               openListSuccess(highlight);
             }, (e) -> {
+              HighlightApplication.getAnalytics().logEvent("OCR_PROCESS_ERROR");
               Timber.e("Highlight model could not be stored :(" + e);
               stopProgress();
               openListError("Sorry something went wrong: " + e.getLocalizedMessage());

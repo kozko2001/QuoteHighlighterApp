@@ -140,10 +140,12 @@ public class HighlightListFragment extends Fragment {
         .toList()
         .subscribeOn(io())
         .observeOn(AndroidSchedulers.mainThread())
-        .subscribe((highlights) -> adapter.setNewData(highlights),
-            (e) -> {
-              Timber.d("ERROR " + e );
-            });
+        .subscribe((highlights -> {
+          HighlightApplication.getAnalytics().setUserProperty("NUMBER_HIGHLIGHT", "" + highlights.size());
+          adapter.setNewData(highlights);
+        }), (e) -> {
+          Timber.d("ERROR " + e );
+        });
   }
 
   public static HighlightListFragment create() {
