@@ -17,8 +17,7 @@ public class HighlightListAdapter extends BaseQuickAdapter<Highlight> {
   protected void convert(BaseViewHolder helper, Highlight highlight) {
     helper.setText(R.id.text, highlight.text())
         .setImageUrl(R.id.image, highlight.highlighted())
-        .setOnClickListener(R.id.btn_change_text, new OnItemChildClickListener())
-        .setOnClickListener(R.id.btn_see_image, new OnItemChildClickListener());
+        .setOnClickListener(R.id.btn_change_text, new OnItemChildClickListener());
   }
 
 }

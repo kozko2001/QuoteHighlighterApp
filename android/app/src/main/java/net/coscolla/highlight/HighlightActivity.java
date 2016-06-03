@@ -29,6 +29,8 @@ import net.coscolla.highlight.model.Highlight;
 import net.coscolla.highlight.model.HighlightRepository;
 import net.coscolla.highlight.recognition.Recognition;
 import net.coscolla.highlight.recognition.vision.VisionApi;
+import net.coscolla.highlight.view.CustomDrawableView;
+import net.coscolla.highlight.view.dialogs.NothingHighlightedDialog;
 import net.coscolla.highlight.view.dialogs.RecognizingProgressDialog;
 
 import java.io.BufferedOutputStream;
@@ -50,7 +52,7 @@ public class HighlightActivity extends AppCompatActivity {
   public static final String EXTRA_IMAGE = "EXTRA_IMAGE";
   private static final String LOGTAG = "HighlightActivity";
   private ImageView capturedImage;
-  private DrawableView paintView;
+  private CustomDrawableView paintView;
   private Bitmap capturedBitmap;
   private HighlightRepository repository;
 
@@ -63,7 +65,7 @@ public class HighlightActivity extends AppCompatActivity {
     repository = new HighlightRepository(HighlightApplication.getDb());
 
     capturedImage = (ImageView) findViewById(R.id.captured_image);
-    paintView = (DrawableView) findViewById(R.id.paintView);
+    paintView = (CustomDrawableView) findViewById(R.id.paintView);
 
     capturedBitmap = BitmapFactory.decodeFile(getImageFile());
     capturedImage.setImageBitmap(capturedBitmap);
@@ -83,31 +85,70 @@ public class HighlightActivity extends AppCompatActivity {
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
     if (fab != null) {
       fab.setOnClickListener(view -> {
-        HighlightApplication.getAnalytics().logEvent("HIGHLIGHT");
 
-        paintView.setVisibility(View.GONE);
-        int originalWidth = capturedBitmap.getWidth();
-        int originalHeight = capturedBitmap.getHeight();
-        Bitmap highlightBitmap = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
-        paintView.obtainBitmap(highlightBitmap);
-
-        Bitmap maskedBitmap = createMaskedBitmap(originalWidth, originalHeight, highlightBitmap);
-        Bitmap combinedBitmap = createCombinedBitmap(capturedBitmap, highlightBitmap);
-
-        File maskedImageFile = writeBitmapToFile(maskedBitmap, "-masked");
-        File combinedFile = writeBitmapToFile(combinedBitmap, "-combined");
-
-        if (maskedBitmap != null) {
-          maskedBitmap.recycle();
+        if(paintView.isSomethingHighlighted()) {
+          HighlightApplication.getAnalytics().logEvent("HIGHLIGHT");
+          createImages();
+        } else {
+          HighlightApplication.getAnalytics().logEvent("TRY_HIGHLIGHT_WITHOUT_DATA");
+          showAlertHighlight();
         }
-
-        if(combinedBitmap != null) {
-          combinedBitmap.recycle();
-        }
-
-        startRecognition(maskedImageFile, combinedFile);
       });
     }
+  }
+
+  private void showAlertHighlight() {
+    NothingHighlightedDialog dialog = new NothingHighlightedDialog();
+    dialog.show(getSupportFragmentManager(), "NO-HIGHLIGHT-DIALOG");
+  }
+
+  private void createImages() {
+    startProgress();
+    paintView.setVisibility(View.GONE);
+
+    int originalWidth = capturedBitmap.getWidth();
+    int originalHeight = capturedBitmap.getHeight();
+    Bitmap highlightBitmap = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
+    paintView.obtainBitmap(highlightBitmap);
+
+    Bitmap maskedBitmap = createMaskedBitmap(originalWidth, originalHeight, highlightBitmap);
+    File maskedImageFile = writeBitmapToFile(maskedBitmap, "-masked");
+    if (maskedBitmap != null) {
+      maskedBitmap.recycle();
+    }
+
+    Bitmap combinedBitmap = createCombinedBitmap(capturedBitmap, highlightBitmap);
+    File combinedFile = writeBitmapToFile(combinedBitmap, "-combined");
+    if(combinedBitmap != null) {
+      combinedBitmap.recycle();
+    }
+
+    capturedImage.setImageURI(Uri.fromFile(combinedFile));
+    highlightBitmap.recycle();
+    startRecognition(maskedImageFile, combinedFile);
+  }
+
+  private void startRecognition(File maskImage, File combinedImage) {
+    Recognition recognition = new VisionApi();
+    String highlightedImageFilePath = combinedImage.getAbsolutePath();
+    recognition.recognition(maskImage.getAbsolutePath())
+        .flatMap((text) -> insertIntoDatabase(text, highlightedImageFilePath))
+        .subscribeOn(io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(
+            (highlight) -> {
+              Timber.d("Highlight model stored correctly :)" + highlight);
+              HighlightApplication.getAnalytics().logEvent("OCR_PROCESS_OK");
+              stopProgress();
+              openListSuccess(highlight);
+            }, (e) -> {
+              HighlightApplication.getAnalytics().logEvent("OCR_PROCESS_ERROR");
+              Timber.e("Highlight model could not be stored :(" + e);
+              stopProgress();
+              openListError("Sorry something went wrong: " + e.getLocalizedMessage());
+            }, () -> {
+              maskImage.delete();
+            });
   }
 
   /**
@@ -150,32 +191,6 @@ public class HighlightActivity extends AppCompatActivity {
     paintView.setAlpha(0.5f);
   }
 
-  private void startRecognition(File maskImage, File combinedImage) {
-    startProgress();
-
-    Recognition recognition = new VisionApi();
-    String highlightedImageFilePath = combinedImage.getAbsolutePath();
-    recognition.recognition(maskImage.getAbsolutePath())
-        .flatMap((text) -> insertIntoDatabase(text, highlightedImageFilePath))
-        .subscribeOn(io())
-        .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(
-            (highlight) -> {
-              Timber.d("Highlight model stored correctly :)" + highlight);
-              HighlightApplication.getAnalytics().logEvent("OCR_PROCESS_OK");
-              stopProgress();
-              openListSuccess(highlight);
-            }, (e) -> {
-              HighlightApplication.getAnalytics().logEvent("OCR_PROCESS_ERROR");
-              Timber.e("Highlight model could not be stored :(" + e);
-              stopProgress();
-              openListError("Sorry something went wrong: " + e.getLocalizedMessage());
-            }, () -> {
-              maskImage.delete();
-              combinedImage.delete();
-            });
-  }
-
   private void startProgress() {
     RecognizingProgressDialog dialog = new RecognizingProgressDialog();
     dialog.show(getSupportFragmentManager(), "PROGRESS-DIALOG");
@@ -213,10 +228,6 @@ public class HighlightActivity extends AppCompatActivity {
    */
   @Nullable
   private Bitmap createMaskedBitmap(int originalWidth, int originalHeight, Bitmap highlightBitmap) {
-    int h = highlightBitmap.getHeight();
-
-    Log.e(LOGTAG, "height: " + h);
-
     Bitmap result = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888);
     Canvas tempCanvas = new Canvas(result);
     Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -234,10 +245,6 @@ public class HighlightActivity extends AppCompatActivity {
 
   @Nullable
   private Bitmap createCombinedBitmap(Bitmap capturedBitmap, Bitmap highlightBitmap) {
-    int h = highlightBitmap.getHeight();
-
-    Log.e(LOGTAG, "height: " + h);
-
     Bitmap result = Bitmap.createBitmap(capturedBitmap.getWidth(), capturedBitmap.getHeight(), Bitmap.Config.ARGB_8888);
     Canvas tempCanvas = new Canvas(result);
     Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -253,7 +260,9 @@ public class HighlightActivity extends AppCompatActivity {
   private File writeBitmapToFile(Bitmap result, String name) {
     File file = null;
     try {
-      file = new File(getImageFile() + "name" + ".jpg");
+      String origFilename = getImageFile();
+      String origFilenameWithoutExtension = origFilename.substring(0, origFilename.length()-4);
+      file = new File( origFilenameWithoutExtension + name + ".jpg");
       OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
       result.compress(Bitmap.CompressFormat.JPEG, 100, os);
       os.close();

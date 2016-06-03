@@ -1,9 +1,13 @@
 <resources>
-    <string name="app_name">highlight</string>
+    <string name="app_name">Higlight Quotes</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_highlight">HighlightActivity</string>
     <string name="processing">Processing</string>
     <string name="extracting_from_image">Extracting the text from the image</string>
     <string name="see_image">See Image</string>
     <string name="change_text">Change text</string>
+    <string name="OK">ok</string>
+    <string name="error_title">Error</string>
+    <string name="no_highlight_message">Please highlight with your finguer the part of the text you are interested with</string>
+    <string name="learn_more">Learn More</string>
 </resources>

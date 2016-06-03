@@ -18,6 +18,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 
+import com.chad.library.adapter.base.BaseQuickAdapter;
+
 import net.coscolla.highlight.HighlightApplication;
 import net.coscolla.highlight.R;
 import net.coscolla.highlight.model.Highlight;
@@ -111,13 +113,15 @@ public class HighlightListFragment extends Fragment {
     {
       Highlight model = (Highlight) baseQuickAdapter.getItem(position);
       switch (view.getId()) {
-        case R.id.btn_see_image:
-          openImageViewer(model.original());
-          break;
         case R.id.btn_change_text:
           changeText(model);
           break;
       }
+    });
+
+    adapter.setOnRecyclerViewItemClickListener((view, position) -> {
+      Highlight model = adapter.getItem(position);
+      openImageViewer(model.highlighted());
     });
   }
 

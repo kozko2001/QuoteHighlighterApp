@@ -2,9 +2,11 @@ package net.coscolla.highlight.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 
 import me.panavtec.drawableview.DrawableView;
+import me.panavtec.drawableview.DrawableViewSaveState;
 
 public class CustomDrawableView extends DrawableView {
   public CustomDrawableView(Context context) {
@@ -29,5 +31,22 @@ public class CustomDrawableView extends DrawableView {
     if(scaleFactor != 33.333f) {
       super.onScaleChange(scaleFactor);
     }
+  }
+
+  public boolean isSomethingHighlighted() {
+    Parcelable state = this.onSaveInstanceState();
+    if (state instanceof DrawableViewSaveState) {
+      DrawableViewSaveState ss = (DrawableViewSaveState) state;
+      return ss.getPaths().size() > 0;
+    } else {
+      return false;
+    }
+    /*Parcelable state = this.onSaveInstanceState();
+    if (!(state instanceof DrawableViewSaveState)) {
+      DrawableViewSaveState ss = (DrawableViewSaveState) state;
+      return ss.getPaths().size() > 0;
+    } else {
+      return false;
+    }*/
   }
 }
