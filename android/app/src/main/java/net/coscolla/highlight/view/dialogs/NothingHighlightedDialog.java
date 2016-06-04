@@ -22,7 +22,7 @@ public class NothingHighlightedDialog extends DialogFragment {
         .setTitle(R.string.error_title)
         .setMessage(R.string.no_highlight_message)
         .setNegativeButton(R.string.learn_more, (dialog, which) -> {
-          startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.youtube.com/watch?v=cxLG2wtE7TM")));
+          startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=uW0KeJ-iQPo")));
         })
         .setPositiveButton(R.string.OK, (dialog, which) -> {
           dialog.dismiss();

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
@@ -46,6 +47,10 @@ public class CaptureActivity extends AppCompatActivity {
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
     coordinatorLayout = (CoordinatorLayout) findViewById(R.id.coordinator);
 
+    if(savedInstanceState != null) {
+      mCurrentPhotoPath = savedInstanceState.getString(SAVE_STATE_CURRENT_FILE);
+    }
+
     //mCurrentPhotoPath = "/storage/emulated/0/Android/data/net.coscolla.highlight/files/JPEG_20160526_063232_1992924699.jpg";
     //startHighlight();
 
@@ -78,12 +83,6 @@ public class CaptureActivity extends AppCompatActivity {
   protected void onSaveInstanceState(Bundle outState) {
     super.onSaveInstanceState(outState);
     outState.putString(SAVE_STATE_CURRENT_FILE, mCurrentPhotoPath);
-  }
-
-  @Override
-  protected void onRestoreInstanceState(Bundle savedInstanceState) {
-    super.onRestoreInstanceState(savedInstanceState);
-    mCurrentPhotoPath = savedInstanceState.getString(SAVE_STATE_CURRENT_FILE);
   }
 
   private void addHighlightList() {
@@ -131,10 +130,15 @@ public class CaptureActivity extends AppCompatActivity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-      HighlightApplication.getAnalytics().logEvent("CAPUTE_DONE");
-      BitmapUtils.rotateCameraBitmap(mCurrentPhotoPath);
+      HighlightApplication.getAnalytics().logEvent("CAPTURE_DONE");
 
-      startHighlight();
+
+      final Handler handler = new Handler();
+      handler.postDelayed(() -> {
+        BitmapUtils.rotateCameraBitmap(mCurrentPhotoPath);
+
+        startHighlight();
+      }, 500);
     }
   }
 
