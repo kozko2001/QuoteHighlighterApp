@@ -10,4 +10,7 @@
     <string name="error_title">Error</string>
     <string name="no_highlight_message">Please highlight with your finguer the part of the text you are interested with</string>
     <string name="learn_more">Learn More</string>
+    <string name="capture">Capture</string>
+    <string name="import_gallery">Import from gallery</string>
+    <string name="search">Search</string>
 </resources>
