@@ -67,6 +67,8 @@ dependencies {
     compile 'com.google.firebase:firebase-core:9.0.0'
     compile 'com.google.firebase:firebase-crash:9.0.0'
 
+    compile 'com.ragnarok.rxcamera:lib:0.0.3'
+
 }
 
 apply plugin: 'com.google.gms.google-services'
