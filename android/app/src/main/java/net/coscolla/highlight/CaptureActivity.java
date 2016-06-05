@@ -114,7 +114,7 @@ public class CaptureActivity extends AppCompatActivity {
           }
         })
         .setDeniedMessage("If you reject permission,you can not use this service\n\nPlease turn on permissions at [Setting] > [Permission]")
-        .setPermissions(Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE)
+        .setPermissions(Manifest.permission.CAMERA)
         .check();
   }
 
@@ -218,12 +218,30 @@ public class CaptureActivity extends AppCompatActivity {
     return picturePath;
   }
 
+  private void askPermissionsToOpenGallery() {
+
+    new TedPermission(this)
+        .setPermissionListener(new PermissionListener() {
+          @Override
+          public void onPermissionGranted() {
+            Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            startActivityForResult(i, REQUEST_IMAGE_GALLERY);
+          }
+
+          @Override
+          public void onPermissionDenied(ArrayList<String> arrayList) {
+
+          }
+        })
+        .setDeniedMessage("If you reject permission,you can not use this service\n\nPlease turn on permissions at [Setting] > [Permission]")
+        .setPermissions(Manifest.permission.READ_EXTERNAL_STORAGE)
+        .check();
+  }
+
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     if(item.getItemId() == R.id.action_from_gallery) {
-      Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-      startActivityForResult(i, REQUEST_IMAGE_GALLERY);
-
+      askPermissionsToOpenGallery();
       return true;
     }
 

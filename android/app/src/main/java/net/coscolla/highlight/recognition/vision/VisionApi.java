@@ -19,6 +19,7 @@ import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
 
+import net.coscolla.highlight.PrivateConstants;
 import net.coscolla.highlight.recognition.Recognition;
 import net.coscolla.highlight.utils.BitmapUtils;
 
@@ -37,7 +38,7 @@ import static rx.Observable.merge;
  */
 public class VisionApi implements Recognition {
 
-  private static final java.lang.String CLOUD_VISION_API_KEY = "API_KEY";
+  private static final java.lang.String CLOUD_VISION_API_KEY = PrivateConstants.VISION_API;
   private static final String LOGTAG = "VisionApi";
 
 
